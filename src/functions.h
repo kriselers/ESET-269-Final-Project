@@ -17,10 +17,13 @@
 //void ADCInit(void);
 //int ADCRead(void);
 void getMenu(void);
+void Uprint(char string[]);
+int getChoice();
 void mainMenu(void);
 void rgbControl(void);
 void digitalInput(void);
 void tempReading(void);
+
 
 //Constants
 
