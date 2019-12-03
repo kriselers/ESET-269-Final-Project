@@ -14,16 +14,18 @@
 //Structs
 
 //Functions
-//void ADCInit(void);
-//int ADCRead(void);
+void UARTinit(void);
+void ADCinit(void);
+void Pininit(void);
 void getMenu(void);
 void Uprint(char string[]);
-int getChoice();
 void mainMenu(void);
 void rgbControl(void);
 void digitalInput(void);
 void tempReading(void);
 
+int ADCRead(void);
+int getChoice(void);
 
 //Constants
 
