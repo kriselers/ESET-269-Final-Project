@@ -16,10 +16,14 @@
 //Functions
 void UARTinit(void);
 void ADCinit(void);
-void Pininit(void);
+void PINinitDigital(void);
+void PINinitRGB(void);
+
 void getMenu(void);
 void Uprint(char string[]);
 void mainMenu(void);
+void delay(int x);
+
 void rgbControl(void);
 void digitalInput(void);
 void tempReading(void);
