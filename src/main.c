@@ -13,12 +13,12 @@
 #include "functions.h"
 
 int main(void) {
-	
 	UARTinit();
 	ADCinit();
-	//Pininit();
+	PINinitDigital();
+	PINinitRGB();
 	getMenu();
-    
+	
     /* Go in waiting state. Will modify in later labs */
     while(1);
 }	// main
