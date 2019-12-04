@@ -18,34 +18,76 @@
 *   Author: Kristopher Elers
 */
 void UARTinit(void) {
-    EUSCI_A0->CTLW0 |= 1;   // Put into reset state
-    EUSCI_A0->MCTLW = 0;
-    EUSCI_A0->CTLW0 = 0x0081;   // 1 stop bit, no parity, SMCLK, 8-BIT DATA
-    EUSCI_A0->BRW = 26; // Baud rate
+    EUSCI_A0 ->CTLW0 |= 1;   // Put into reset state
+    EUSCI_A0 ->MCTLW = 0;
+    EUSCI_A0 ->CTLW0 = 0x0081;   // 1 stop bit, no parity, SMCLK, 8-BIT DATA
+    EUSCI_A0 ->BRW = 26; // Baud rate
     P1->SEL0 |= 0x0C;   // SEL0 value
     P1->SEL1 &= ~0x0C;  // SEL1 value
-    EUSCI_A0->CTLW0 &= ~1;  // Take out for reset state
-}
+    EUSCI_A0 ->CTLW0 &= ~1;  // Take out for reset state
+} //UARTinit
 
 
 /*
-*   Function for initializing UART
+*   Function for initializing the pins that will be used for menu option 2, digital input
 *   Returns: void
-*   Author: Alex Liu
+*   Author: Maksym Sury
 */
-void Pininit(void){	
-	P2 ->SEL0 &= ~0xEE; //activate every pin in port 2
-	P2 ->SEL1 &= ~0xEE;
-	P2 ->DIR |= 0xEE; //set every pin to output
-
-	P1 ->SEL0 = 0x00; //setup port 1 pin 0 for systick timer
-	P1 ->SEL1 = 0x00;
-	P1 ->DIR |= 0x01;	
-}
+void PINinitDigital(void) { 
+    P1 ->SEL0 &= ~0x13;
+    P1 ->SEL1 &= ~0x13;
+    P1 ->DIR &= ~0x12;
+    P1 ->DIR |= 0x01;
+    P1 ->REN |= 0x12;
+    P1 ->OUT |= 0x12;   
+} //PINinitDigital
 
 
 /*
-*   Function for printing a string to the console
+*   Function for initializing the pins that will be used for menu option 1, RGB control
+*   Returns: void
+*   Author: Maksym Sury
+*/
+void PINinitRGB(void) { 
+    P2 ->SEL0 &= ~0x07;
+    P2 ->SEL1 &= ~0x07;
+    P2 ->DIR |= 0x07;   
+} //PINinitRGB
+
+
+/*
+*   Function for initializing ADC
+*   Returns: void
+*   Author: Logan Porter
+*/
+void ADCinit(void)  {
+    ADC14 ->CTL0 =  0x00000010;    // power on and disable during configuration
+    ADC14 ->CTL0 |= 0x04080300;    // sample and hold mode, sysclk, 32 sample clocks, software trigger
+    ADC14 ->CTL1 =  0x00000030;    // 14-bit resolution 
+    ADC14 ->MCTL[2] = 1;           // A1 input, single-ended, Vref=AVCC 
+    P5 ->SEL1 |= 0x10;             // Configure P5.4 for A1
+    P5 ->SEL0 |= 0x10;
+    ADC14 ->CTL1 |= 0x00020000;    // convert for memory reg. 2
+    ADC14 ->CTL0 |= 2;             // enable ADC
+} //ADCinit
+
+
+/*
+*   Function for reading ADC
+*   Returns: int
+*   Author: Logan Porter
+*/
+int ADCRead(void)   {
+    int z = 0;
+    ADC14 ->CTL0 |= 1;         // start a conversion
+    while (!ADC14 ->IFGR0);    // wait till conversion complete
+    z = ADC14 ->MEM[2];       // read conversion result
+    return z;
+} //ADCRead
+
+
+/*
+*   Function for printing a character array, or string, to the console
 *   Returns: void
 *   Author: Kristopher Elers
 */
@@ -53,48 +95,17 @@ void Uprint(char string[]) {
     int i = 0;
 
     while(string[i] != 0) {
-        EUSCI_A0->TXBUF = string[i];
-        while((EUSCI_A0->IFG & 2) == 0) {
+        EUSCI_A0 ->TXBUF = string[i];
+        while((EUSCI_A0 ->IFG & 2) == 0) {
             //do nothing
         }
         i++;
     }
-}   // Uprint
+} //Uprint
 
 
 /*
-*   Function for initializing ADC
-*   Returns: void
-*   Author: Kristopher Elers
-*/
-void ADCinit(void)  {
-    ADC14->CTL0 =  0x00000010;    // power on and disable during configuration
-    ADC14->CTL0 |= 0x04080300;    // sample and hold mode, sysclk, 32 sample clocks, software trigger
-    ADC14->CTL1 =  0x00000030;    // 14-bit resolution 
-    ADC14->MCTL[2] = 1;           // A1 input, single-ended, Vref=AVCC 
-    P5->SEL1 |= 0x10;             // Configure P5.4 for A1
-    P5->SEL0 |= 0x10;
-    ADC14->CTL1 |= 0x00020000;    // convert for memory reg. 2
-    ADC14->CTL0 |= 2;             // enable ADC
-}
-
-
-/*
-*   Function for reading ADC
-*   Returns: int
-*   Author: Kristopher Elers
-*/
-int ADCRead(void)   {
-    int z = 0;
-    ADC14->CTL0 |= 1;         // start a conversion
-    while (!ADC14->IFGR0);    // wait till conversion complete
-    z = ADC14->MEM[2];       // read conversion result
-    return z;
-}
-
-
-/*
-*   Function for getting the users choice
+*   Function for reading input from the keyboard
 *   Returns: int
 *   Author: Kristopher Elers
 */
@@ -105,17 +116,41 @@ int getChoice(void) {
     while(1) {
         if((EUSCI_A0->IFG & 1) != 0) {  // Check if if character is receive buffer
             choice[i] = EUSCI_A0->RXBUF;    // Place current character in array
-			EUSCI_A0->TXBUF = choice[i];
+        EUSCI_A0 ->TXBUF = choice[i];
             if(choice[i] == '\r') { // Enter key pressed
-				choice[i] = '\0';
-                break;
+        choice[i] = '\0';
+                return atoi(choice);
             } else {
                 i++;
             }
         }
     }
-		return atoi(choice);
-}   // getChoice
+} //getChoice
+
+
+/*
+*   Delay function
+*   Returns: void
+*   Author: Kristopher Elers
+*/
+void delay(int x) {
+    if(x == 0) {
+        while((SysTick ->CTRL & 0x10000) == 0) {
+        // Do nothing
+        }
+    } else {
+        int togCount = (x / 0.000000333) - 1;
+
+        SysTick->LOAD = togCount;   // Set user input delay time
+        SysTick->CTRL |= 0x04;
+        P1->OUT |= 0x01;
+
+        SysTick->CTRL |= 0x01;
+        while((SysTick ->CTRL & 0x10000) == 0) {
+        // Do nothing
+        }
+    }
+}
 
 
 /*
@@ -128,8 +163,8 @@ void mainMenu(void) {
     Uprint("1. RGB Control\n\r");
     Uprint("2. Digital Input\n\r");
     Uprint("3. Temperature Reading\n\r");
-	Uprint("4. Quit\n\r");
-}   // mainMenu
+    Uprint("4. Quit\n\r");
+} //mainMenu
 
 
 /*
@@ -138,8 +173,8 @@ void mainMenu(void) {
 *   Author: Kristopher Elers
 */
 void getMenu(void) {
-	int option = 0;
-	
+    int option = 0;
+    
     while(option != 4) {
         mainMenu();
         Uprint("Select Option: ");
@@ -161,7 +196,7 @@ void getMenu(void) {
                 Uprint("\n\rYou pressed an invalid key. Please try again.\n\r");
         }
     }
-}   // getMenu
+} //getMenu
 
 
 /*
@@ -173,33 +208,28 @@ void rgbControl(void) {
     int rgb;    // RGB combination character array
     int tog;    // Toggle time
     int blink;  // Number of blinks
-
+    
+    P2 ->SEL0 &= ~0x07;   
+    P2 ->SEL1 &= ~0x07;
+    P2 ->DIR |= 0x07;
+        
+    
     Uprint("\n\r\n\rEnter a combination of RGB (1-7): ");
     rgb = getChoice();
     Uprint("\n\rEnter the toggle time: ");
     tog = getChoice();
     Uprint("\n\rEnter the number of blinks: ");
     blink = getChoice();
-	Uprint("\n\rBlinking LED...");
-	
-    int togCount = (tog / 0.000000333) - 1;
-    SysTick->LOAD = togCount;   // Set user input delay time
-    SysTick->CTRL |= 0x04;
-    P1->OUT |= 0x01;
-
+    Uprint("\n\rBlinking LED...");
+    
     for(int i = 0; i <= (blink - 1); i++) { // Blink RGB combo 'blink' times
-        SysTick->CTRL |= 0x01;
-        P2->OUT |= 0x00 + rgb;
-        while((SysTick->CTRL & 0x10000) == 0) {
-            // Do nothing
-        }
-        P2->OUT &= ~(0x00 + rgb);
+        delay(tog);
+        P2 ->OUT |= 0x00 + rgb;
+        delay(tog);
+        P2->OUT &= 0x00;
     }
-		
-	Uprint("\n\rDone");
-    P1->OUT &= ~0xEE;   // Turn off all pins
-    SysTick->CTRL &= ~0x1;  // Disable SysTick
-}   // rgbControl
+    Uprint("\n\rDone");
+} //rgbControl
 
 
 /*
@@ -208,19 +238,33 @@ void rgbControl(void) {
 *   Author: Kristopher Elers
 */
 void digitalInput(void) {
-    
-}   // digitalInput
+    // If no buttons are pressed: ((((P1->IN & 0x10)>>0)!=0)&&((P1->IN & 0x02)>>1==1))
+
+    while(1) {
+        if((((P1 ->IN & 0x10)>>0) == 0) && ((P1 ->IN & 0x02)>>1 != 1)) {
+            Uprint("\n\rBoth Buttons pressed");
+        }
+        else if((((P1 ->IN & 0x10)>>4) == 1) && (((P1 ->IN & 0x02)>>1) == 0)) {
+            Uprint("\n\rButton 1 pressed");
+        }
+        else if((((P1 ->IN & 0x10)>>0) != 0) && (((P1->IN & 0x02)>>0)!=0)) {
+            Uprint("\n\rButton 2 pressed");
+        }
+        else {
+            Uprint("\n\rNo Button pressed");
+        }
+    }
+} //digitalInput
 
 
 /*
-*   Function for getting the temperature reading of the board
+*   Function for getting the temperature reading from a temperature sensor a bread board
 *   Returns: void
 *   Author: Maksym Sury
 */
 void tempReading(void) {
     int x = 0; //iteration value for char array (string)
-    int choice;
-    double ans; //variable for math answer
+    int ans; //variable for math answer
 
     SysTick->LOAD = 3000000-1;
     SysTick->CTRL |= 0x4;
@@ -228,29 +272,19 @@ void tempReading(void) {
     SysTick->CTRL |= 0x1;
 
     Uprint("\n\r\n\rEnter the number of temperature readings (1-5): ");
-    choice = getChoice();
-
-    //set red turn off green
+    ans = getChoice();
+    Uprint("\n\r\n\r");
     
     for(int i = 1; i <= ans; i++) {   
         int y = 0;
-        int temp = ADCRead() - 500;
-        float tempC = (float)temp / 10;
-        float tempF = (tempC * (9.0 / 5.0) + 32.0);
-        while((SysTick->CTRL & 0x10000) == 0) {
-            // Do nothing
-        }
-
         char numlist[50];
-        sprintf(numlist,"Reading %d: %.2f C & %.2f F \n\r", i, tempC, tempF); 
-        int x = 0;
 
-        while(numlist[x] != 0) {
-            EUSCI_A0->TXBUF = numlist[x];
-            while((EUSCI_A0->IFG & 2)==0) {
-                // Do nothing
-            }
-            x++;
-        }
+        float temp = ADCRead(); // Getting the raw temperature reading from the sensor
+        float tempC = ((temp-3300.000)/20.0);   // Converting to Celsius
+        float tempF = (tempC * (9.0 / 5.0) + 32.0); // Converting to Fahrenheit
+        delay(0);
+
+        sprintf(numlist,"Reading %d: %d C & %d F \n\r", i, (int)tempC, (int)tempF); 
+        Uprint(numlist);
     }
-}
+} //tempReading 
