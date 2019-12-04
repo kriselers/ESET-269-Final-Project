@@ -10,6 +10,7 @@ Contributors:
 This project was created in Keil and requires Teraterm (Baud Rate: 115200) and a MSP432P401R. Menu option 3 will also require a temperature sensor on a breadboard with jumper wires to be hooked up to P5.4 with power running to 3.3V connector and grounded at the ground connector underneath the 5V pin on the MSP432 Launchpad. Please check that your circuit is correct before connecting the power. The temperature sensor will get very hot if it's incorrect and could potentionally destory the MSP432.
 
 The program will display:
+  
   MSP432 Menu
 1. RGB Control
 2. Digital Input
